@@ -21,29 +21,27 @@ from pathlib import Path
 from typing import Iterable, Sequence
 
 
-# Python/C binary64 values of 1 / log2(rank + 1), pinned for the paper's
-# maximum certificate cutoff K=20.  float.fromhex() recovers the bit pattern
-# exactly and Fraction.from_float() then exposes its exact dyadic value.
+# Binary64 position discounts from NIST ndeval v4.4, through rank 20.
 LOG_DISCOUNT_HEX_K20: tuple[str, ...] = (
     "0x1.0000000000000p+0",
-    "0x1.430939835353ep-1",
+    "0x1.430939835353dp-1",
     "0x1.0000000000000p-1",
     "0x1.b903469050f73p-2",
-    "0x1.8c23246dc0aa0p-2",
+    "0x1.8c23246dc0a9fp-2",
     "0x1.6cc193acea9b5p-2",
-    "0x1.5555555555555p-2",
-    "0x1.430939835353ep-2",
-    "0x1.34413509f79ffp-2",
-    "0x1.28009c1dd6454p-2",
-    "0x1.1da3383416064p-2",
+    "0x1.5555555555556p-2",
+    "0x1.430939835353dp-2",
+    "0x1.34413509f79fep-2",
+    "0x1.28009c1dd6453p-2",
+    "0x1.1da3383416063p-2",
     "0x1.14b94f8d9641fp-2",
     "0x1.0cf3ffed2d6acp-2",
     "0x1.0619dc46d3e15p-2",
     "0x1.0000000000000p-2",
-    "0x1.f50b57eac5885p-3",
+    "0x1.f50b57eac5884p-3",
     "0x1.eb22cc68aa6e3p-3",
     "0x1.e21e1180c5dabp-3",
-    "0x1.d9dcd21439834p-3",
+    "0x1.d9dcd21439835p-3",
     "0x1.d244c78367a0dp-3",
 )
 
@@ -92,6 +90,29 @@ def binary64_log_discounts(k: int) -> tuple[Fraction, ...]:
         Fraction.from_float(float.fromhex(value))
         for value in LOG_DISCOUNT_HEX_K20[:k]
     )
+
+
+def ndeval_greedy_order(
+    documents: Sequence[tuple[str, set[str]]], k: int
+) -> list[int]:
+    """Return ndeval's greedy indices for binary judgments and alpha = 0.5."""
+
+    retention = Fraction(1, 2)
+    seen: Counter[str] = Counter()
+    remaining = list(range(len(documents)))
+    order: list[int] = []
+    for _ in range(min(k, len(remaining))):
+        best = max(
+            remaining,
+            key=lambda index: (
+                sum(retention ** seen[label] for label in documents[index][1]),
+                documents[index][0],
+            ),
+        )
+        order.append(best)
+        remaining.remove(best)
+        seen.update(documents[best][1])
+    return order
 
 
 def exact_overlap_value(

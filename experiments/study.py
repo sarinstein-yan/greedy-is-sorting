@@ -37,6 +37,7 @@ from chainmerge import (  # noqa: E402
 )
 from exact_certificate import (  # noqa: E402
     exact_overlap_certificate,
+    ndeval_greedy_order,
 )
 
 SEED = 20260814
@@ -234,10 +235,10 @@ def trec_full_lp(
     for path in paths:
         year = path.name[:4]
         for qid, docs in load_qrels(path).items():
-            items = sorted(docs.items())
-            label_sets = [set(labels) for _, labels in items]
+            documents = sorted(docs.items())
+            label_sets = [labels for _, labels in documents]
             actual_k = min(k, len(label_sets))
-            greedy = overlap_greedy(label_sets, actual_k)
+            greedy = ndeval_greedy_order(documents, actual_k)
             numeric_objective, seconds = overlap_lp_numeric(label_sets, actual_k)
             if exact_certificates:
                 certificate = exact_overlap_certificate(label_sets, greedy)

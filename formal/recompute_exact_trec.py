@@ -24,16 +24,15 @@ from exact_certificate import (  # noqa: E402
     exact_overlap_certificate,
     exact_overlap_dp,
     exact_projection_certificate,
+    ndeval_greedy_order,
 )
-from study import load_qrels, overlap_greedy  # noqa: E402
-
-
+from study import load_qrels  # noqa: E402
 
 
 def _overlap_tasks(
     paths: list[Path], seeds: list[int], trials_per_query: int
-) -> list[tuple[int, str, str, int, list[set[str]], int]]:
-    tasks: list[tuple[int, str, str, int, list[set[str]], int]] = []
+) -> list[tuple[int, str, str, int, list[tuple[str, set[str]]], int]]:
+    tasks: list[tuple[int, str, str, int, list[tuple[str, set[str]]], int]] = []
     for seed in seeds:
         rng = np.random.default_rng(seed)
         for path in paths:
@@ -50,30 +49,28 @@ def _overlap_tasks(
                         len(rest), size=min(9, len(rest)), replace=False
                     )
                     sample = [anchor] + [rest[int(i)] for i in chosen]
-                    label_sets = [set(labels) for _, labels in sample]
-                    tasks.append(
-                        (seed, year, qid, trial, label_sets, min(5, len(label_sets)))
-                    )
+                    tasks.append((seed, year, qid, trial, sample, min(5, len(sample))))
     return tasks
 
 
 def _full_tasks(
     paths: list[Path], k: int
-) -> list[tuple[str, str, list[set[str]], int]]:
-    tasks: list[tuple[str, str, list[set[str]], int]] = []
+) -> list[tuple[str, str, list[tuple[str, set[str]]], int]]:
+    tasks: list[tuple[str, str, list[tuple[str, set[str]]], int]] = []
     for path in paths:
         year = path.name[:4]
         for qid, docs in load_qrels(path).items():
-            label_sets = [set(labels) for _, labels in sorted(docs.items())]
-            tasks.append((year, qid, label_sets, min(k, len(label_sets))))
+            documents = sorted(docs.items())
+            tasks.append((year, qid, documents, min(k, len(documents))))
     return tasks
 
 
 def _certify_overlap(
-    task: tuple[int, str, str, int, list[set[str]], int]
+    task: tuple[int, str, str, int, list[tuple[str, set[str]]], int]
 ) -> dict[str, object]:
-    seed, year, qid, trial, label_sets, k = task
-    greedy = overlap_greedy(label_sets, k)
+    seed, year, qid, trial, documents, k = task
+    label_sets = [labels for _, labels in documents]
+    greedy = ndeval_greedy_order(documents, k)
     certificate = exact_overlap_certificate(label_sets, greedy)
     optimum = exact_overlap_dp(label_sets, k)
     projection = exact_projection_certificate(label_sets, k)
@@ -109,10 +106,11 @@ def _certify_overlap(
 
 
 def _certify_full(
-    task: tuple[str, str, list[set[str]], int]
+    task: tuple[str, str, list[tuple[str, set[str]]], int]
 ) -> dict[str, object]:
-    year, qid, label_sets, k = task
-    greedy = overlap_greedy(label_sets, k)
+    year, qid, documents, k = task
+    label_sets = [labels for _, labels in documents]
+    greedy = ndeval_greedy_order(documents, k)
     certificate = exact_overlap_certificate(label_sets, greedy)
     gap = certificate.gap
     row = {

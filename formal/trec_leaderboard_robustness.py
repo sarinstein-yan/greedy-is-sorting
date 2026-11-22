@@ -16,7 +16,7 @@ import json
 import re
 import time
 import urllib.request
-from collections import Counter, defaultdict
+from collections import defaultdict
 from dataclasses import asdict, dataclass
 from decimal import Decimal
 from fractions import Fraction
@@ -30,7 +30,7 @@ import sys
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "experiments"))
 
-from exact_certificate import exact_overlap_value  # noqa: E402
+from exact_certificate import exact_overlap_value, ndeval_greedy_order  # noqa: E402
 from study import load_qrels  # noqa: E402
 
 USER_AGENT = "ChainMerge reproducibility audit (academic use)"
@@ -206,20 +206,7 @@ def _ndeval_greedy_value(
 ) -> Fraction:
     """Reproduce ``ndeval`` greedy, including its larger-docid tie-break."""
 
-    seen: Counter[str] = Counter()
-    remaining = list(range(len(documents)))
-    order: list[int] = []
-    for _ in range(min(k, len(remaining))):
-        best = max(
-            remaining,
-            key=lambda index: (
-                sum(Fraction(1, 2) ** seen[label] for label in documents[index][1]),
-                documents[index][0],
-            ),
-        )
-        order.append(best)
-        remaining.remove(best)
-        seen.update(documents[best][1])
+    order = ndeval_greedy_order(documents, k)
     return exact_overlap_value(order, [labels for _, labels in documents])
 
 
