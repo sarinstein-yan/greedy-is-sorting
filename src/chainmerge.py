@@ -45,7 +45,8 @@ def alpha_chainmerge(
     heap: list[tuple[float, str, int, Hashable]] = []
     for group, values in grouped.items():
         if values:
-            heapq.heappush(heap, (-values[0].gain, str(group), 0, group))
+            heap.append((-values[0].gain, str(group), 0, group))
+    heapq.heapify(heap)
     result: list[Candidate] = []
     while heap and len(result) < k:
         _, _, index, group = heapq.heappop(heap)
@@ -80,7 +81,8 @@ def alpha_chainmerge_presorted(
     heap: list[tuple[float, str, int, Hashable]] = []
     for group, values in grouped.items():
         if values:
-            heapq.heappush(heap, (-values[0].gain, str(group), 0, group))
+            heap.append((-values[0].gain, str(group), 0, group))
+    heapq.heapify(heap)
     result: list[Candidate] = []
     while heap and len(result) < k:
         _, _, index, group = heapq.heappop(heap)
@@ -102,7 +104,8 @@ def alpha_ideal_from_group_counts(
     heap: list[tuple[float, str, int, Hashable]] = []
     for group, count in group_counts.items():
         if count > 0:
-            heapq.heappush(heap, (-1.0, str(group), 0, group))
+            heap.append((-1.0, str(group), 0, group))
+    heapq.heapify(heap)
     groups: list[Hashable] = []
     value = 0.0
     disc = log_discounts(k)
@@ -183,7 +186,8 @@ def erria_chainmerge(
         if values:
             prior = float(priors.get(group, 0.0))
             score = prior * values[0].satisfaction
-            heapq.heappush(heap, (-score, str(group), 0, 1.0 - values[0].satisfaction, group))
+            heap.append((-score, str(group), 0, 1.0 - values[0].satisfaction, group))
+    heapq.heapify(heap)
     result: list[ErrCandidate] = []
     while heap and len(result) < k:
         _, _, index, survival_after, group = heapq.heappop(heap)
